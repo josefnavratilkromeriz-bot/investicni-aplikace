@@ -73,7 +73,7 @@ zadání = st.text_area("Situace klienta")
 if st.button("Generovat"):
     if api_key:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         odpoved = model.generate_content(f"{SYSTEM_PROMPT}\nZadání: {zadání}")
         
         # Očištění výstupu od ```json značek
