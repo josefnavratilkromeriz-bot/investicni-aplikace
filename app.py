@@ -71,7 +71,7 @@ if st.button("Generovat návrh", type="primary"):
         with st.spinner("AI analyzuje zadání..."):
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-pro')
                 odpoved = model.generate_content(f"{SYSTEM_PROMPT}\nZadání: {zadání}")
                 
                 text = odpoved.text.replace("```json", "").replace("```", "").strip()
