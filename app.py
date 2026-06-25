@@ -4,8 +4,7 @@ import json
 import io
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 
 # Databáze popisků
 POPISKY_FONDU = {
@@ -54,24 +53,43 @@ def generuj_pdf(jmeno, situace, analyza, jednorazove, pravidelne):
     buffer.seek(0)
     return buffer
 
-st.title("🧠 AI Poradce")
-api_key = st.sidebar.text_input("Vlož Gemini API klíč", type="password")
-jmeno = st.text_input("Jméno poradce")
-zadání = st.text_area("Situace klienta")
+st.title("🧠 AI Poradce pro Conseq")
+st.markdown("Aplikace automaticky analyzuje situaci klienta a navrhuje řešení na míru.")
 
-if st.button("Generovat"):
-    if api_key:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
-        odpoved = model.generate_content(f"{SYSTEM_PROMPT}\nZadání: {zadání}")
-        
-        try:
-            text = odpoved.text.replace("```json", "").replace("```", "").strip()
-            data = json.loads(text)
-            st.write(data["analyza"])
-            st.table(data["jednorazova_investice"])
-            st.table(data["pravidelna_investice"])
-            pdf = generuj_pdf(jmeno, zadání, data["analyza"], data.get("jednorazova_investice"), data.get("pravidelna_investice"))
-            st.download_button("Stáhnout PDF", pdf, "navrh.pdf", "application/pdf")
-        except Exception as e:
-            st.error(f"Chyba při čtení dat z AI: {e}")
+# Získání skrytého klíče ze Streamlit Secrets
+api_key = st.secrets.get("GEMINI_API_KEY")
+
+jmeno = st.text_input("Jméno poradce")
+zadání = st.text_area("Situace klienta", height=150)
+
+if st.button("Generovat návrh", type="primary"):
+    if not api_key:
+        st.error("Chyba: API klíč není nastaven v tajných nastaveních (Secrets) aplikace na Streamlitu.")
+    elif not zadání.strip():
+        st.warning("Prosím, vyplňte situaci klienta.")
+    else:
+        with st.spinner("AI analyzuje zadání..."):
+            try:
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                odpoved = model.generate_content(f"{SYSTEM_PROMPT}\nZadání: {zadání}")
+                
+                text = odpoved.text.replace("```json", "").replace("```", "").strip()
+                data = json.loads(text)
+                
+                st.success("Analýza hotova!")
+                st.write("### Zdůvodnění")
+                st.write(data.get("analyza", ""))
+                
+                if data.get("jednorazova_investice"):
+                    st.write("### Jednorázová investice")
+                    st.table(data["jednorazova_investice"])
+                if data.get("pravidelna_investice"):
+                    st.write("### Pravidelná investice")
+                    st.table(data["pravidelna_investice"])
+                    
+                pdf = generuj_pdf(jmeno, zadání, data.get("analyza", ""), data.get("jednorazova_investice", []), data.get("pravidelna_investice", []))
+                st.download_button("📥 Stáhnout PDF report pro klienta", pdf, "navrh_ai.pdf", "application/pdf")
+                
+            except Exception as e:
+                st.error(f"Omlouváme se, došlo k chybě při komunikaci s AI: {e}")
