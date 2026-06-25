@@ -92,4 +92,4 @@ if st.button("Generovat návrh", type="primary"):
                 st.download_button("📥 Stáhnout PDF report pro klienta", pdf, "navrh_ai.pdf", "application/pdf")
                 
             except Exception as e:
-                st.error(f"Omlouváme se, došlo k chybě při komunikaci s AI: {e}")
+                st.error(f"Omlouváme se, došlo k chybě při komunikaci s AI. Detail chyby: {e}")
