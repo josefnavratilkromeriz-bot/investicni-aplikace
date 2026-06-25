@@ -53,25 +53,29 @@ def generuj_pdf(jmeno, situace, analyza, jednorazove, pravidelne):
     buffer.seek(0)
     return buffer
 
+st.set_page_config(page_title="AI Poradce", page_icon="🧠")
 st.title("🧠 AI Poradce pro Conseq")
 st.markdown("Aplikace automaticky analyzuje situaci klienta a navrhuje řešení na míru.")
 
-# Získání skrytého klíče ze Streamlit Secrets
-api_key = st.secrets.get("GEMINI_API_KEY")
+# BEZPEČNÉ NAČTENÍ KLÍČE (aby aplikace nespadla, pokud klíč chybí)
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    api_key = None
 
 jmeno = st.text_input("Jméno poradce")
 zadání = st.text_area("Situace klienta", height=150)
 
 if st.button("Generovat návrh", type="primary"):
     if not api_key:
-        st.error("Chyba: API klíč není nastaven v tajných nastaveních (Secrets) aplikace na Streamlitu.")
+        st.error("Chyba: Nepodařilo se najít API klíč. Zkontrolujte prosím sekci 'Secrets' v nastavení Streamlitu.")
     elif not zadání.strip():
         st.warning("Prosím, vyplňte situaci klienta.")
     else:
         with st.spinner("AI analyzuje zadání..."):
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-pro')
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 odpoved = model.generate_content(f"{SYSTEM_PROMPT}\nZadání: {zadání}")
                 
                 text = odpoved.text.replace("```json", "").replace("```", "").strip()
@@ -91,5 +95,7 @@ if st.button("Generovat návrh", type="primary"):
                 pdf = generuj_pdf(jmeno, zadání, data.get("analyza", ""), data.get("jednorazova_investice", []), data.get("pravidelna_investice", []))
                 st.download_button("📥 Stáhnout PDF report pro klienta", pdf, "navrh_ai.pdf", "application/pdf")
                 
+            except json.JSONDecodeError:
+                st.error("AI vrátila data ve špatném formátu. Zkuste to prosím znovu (klikněte ještě jednou na Generovat).")
             except Exception as e:
-                st.error(f"Omlouváme se, došlo k chybě při komunikaci s AI. Detail chyby: {e}")
+                st.error(f"Došlo k chybě: {e}")
